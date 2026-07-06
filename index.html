@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V&J CRM Power</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     FIREBASE — SDK compat (v9). Reemplaza firebaseConfig abajo
+     con los datos de TU proyecto (el mismo patrón que usaste en
+     el CRM técnico y KardexBot: Authentication + Firestore + Storage).
+============================================================= -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#1E2126; --ink-soft:#3A3F47; --paper:#F6F4EF; --panel:#FFFFFF;
+    --steel:#8A8F98; --steel-line:#E4E1D9; --red:#C0392B; --red-soft:#F6E3E0;
+    --amber:#D79A3A; --amber-soft:#F8ECD8; --moss:#4C7A5E; --moss-soft:#E3ECE6;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; }
+  h1,h2,h3,.display{ font-family:'Space Grotesk',sans-serif; letter-spacing:-0.01em; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .hidden{ display:none !important; }
+
+  /* ---------- Auth screens ---------- */
+  .auth-wrap{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-card{ background:var(--panel); border:1px solid var(--steel-line); border-radius:14px; padding:34px 32px; width:100%; max-width:380px; box-shadow:0 8px 30px rgba(0,0,0,.06); }
+  .auth-logo{ display:flex; align-items:center; gap:10px; margin-bottom:22px; }
+  .gear{ width:40px;height:40px;border-radius:50%; background:var(--red); color:#fff; display:flex;align-items:center;justify-content:center; font-family:'Space Grotesk'; font-weight:700; }
+  .auth-title{ font-family:'Space Grotesk'; font-weight:700; font-size:17px; }
+  .auth-sub{ font-size:11px; color:var(--steel); text-transform:uppercase; letter-spacing:.04em; }
+  .field-label{ font-size:11.5px; color:var(--steel); margin-bottom:4px; display:block; text-transform:uppercase; letter-spacing:.03em; }
+  .field{ width:100%; padding:10px 11px; border:1px solid var(--steel-line); border-radius:7px; font-family:'Inter'; font-size:13.5px; background:#FCFBF9; margin-bottom:14px; }
+  .btn{ border:none; border-radius:8px; padding:10px 16px; font-family:'Inter'; font-weight:600; font-size:13.5px; cursor:pointer; }
+  .btn-primary{ background:var(--red); color:#fff; width:100%; }
+  .btn-primary:hover{ background:#A93226; }
+  .btn-link{ background:none; border:none; color:var(--red); font-weight:600; cursor:pointer; font-size:12.5px; padding:0; }
+  .auth-switch{ text-align:center; margin-top:16px; font-size:12.5px; color:var(--steel); }
+  .or-divider{ display:flex; align-items:center; text-align:center; color:var(--steel); font-size:11.5px; margin:14px 0; }
+  .or-divider::before,.or-divider::after{ content:""; flex:1; border-bottom:1px solid var(--steel-line); }
+  .or-divider span{ padding:0 10px; }
+  .btn-google{ width:100%; background:#fff; border:1px solid var(--steel-line); color:var(--ink-soft); border-radius:8px; padding:10px 16px; font-family:'Inter'; font-weight:600; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; }
+  .btn-google:hover{ background:#FAF9F6; border-color:#C9C5BB; }
+  .msg{ font-size:12.5px; padding:10px 12px; border-radius:7px; margin-bottom:14px; }
+  .msg.error{ background:var(--red-soft); color:var(--red); }
+  .msg.info{ background:var(--amber-soft); color:var(--amber); }
+  .msg.success{ background:var(--moss-soft); color:var(--moss); }
+
+  /* ---------- App shell ---------- */
+  .app{ display:none; min-height:100vh; }
+  .app.active{ display:flex; }
+  .sidebar{ width:220px; background:var(--ink); color:#EFEDE7; display:flex; flex-direction:column; padding:20px 0; flex-shrink:0; }
+  .brand{ display:flex; align-items:center; gap:10px; padding:0 18px 20px 18px; border-bottom:1px solid #33373F; margin-bottom:14px; }
+  .brand-name{ font-family:'Space Grotesk'; font-weight:600; font-size:14.5px; line-height:1.2; }
+  .brand-sub{ font-size:10.5px; color:var(--steel); letter-spacing:.04em; text-transform:uppercase; }
+  .nav-item{ display:flex; align-items:center; gap:11px; padding:10px 18px; color:#C6C3BC; cursor:pointer; font-size:13.5px; border-left:3px solid transparent; transition:.15s; }
+  .nav-item:hover{ background:#282C33; color:#fff; }
+  .nav-item.active{ background:#282C33; color:#fff; border-left:3px solid var(--red); font-weight:600; }
+  .nav-item.disabled{ opacity:.4; cursor:not-allowed; }
+  .nav-item.disabled:hover{ background:none; color:#C6C3BC; }
+  .nav-icon{ width:18px; text-align:center; }
+  .soon-tag{ margin-left:auto; font-size:9px; background:#33373F; padding:2px 6px; border-radius:8px; }
+  .sidebar-foot{ margin-top:auto; padding:14px 18px 0 18px; border-top:1px solid #33373F; font-size:10.5px; color:#6B7078; line-height:1.6; }
+
+  .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .topbar{ height:58px; background:var(--panel); border-bottom:1px solid var(--steel-line); display:flex; align-items:center; justify-content:space-between; padding:0 24px; }
+  .topbar-title{ font-family:'Space Grotesk'; font-weight:600; font-size:16px; }
+  .user-chip{ display:flex; align-items:center; gap:10px; font-size:13px; }
+  .avatar{ width:30px;height:30px;border-radius:50%; background:var(--moss-soft); color:var(--moss); display:flex;align-items:center;justify-content:center; font-family:'Space Grotesk'; font-weight:700; font-size:12.5px; }
+  .role-badge{ font-size:10px; background:var(--ink); color:#fff; padding:2px 7px; border-radius:20px; letter-spacing:.03em; }
+  .logout-link{ font-size:12px; color:var(--steel); cursor:pointer; }
+  .logout-link:hover{ color:var(--red); }
+
+  .content{ padding:24px; overflow-y:auto; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+  .view-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .view-head h2{ margin:0; font-size:20px; }
+  .view-sub{ color:var(--steel); font-size:12.5px; margin-top:2px; }
+
+  .panel{ background:var(--panel); border:1px solid var(--steel-line); border-radius:var(--radius); padding:18px; margin-bottom:18px; }
+  .panel-title{ font-family:'Space Grotesk'; font-weight:600; font-size:14.5px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:860px){ .grid-2{ grid-template-columns:1fr; } .sidebar{ width:64px; } .brand-name,.brand-sub,.nav-item span:not(.nav-icon){ display:none; } .nav-item{ justify-content:center; padding:12px 0; } .brand{ justify-content:center; padding:0 0 16px 0; } }
+
+  .btn-ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--steel-line); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .btn-ghost:hover{ background:#EFECE5; }
+  .btn-save{ background:var(--red); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-weight:600; font-size:13px; cursor:pointer; }
+  .btn-save:hover{ background:#A93226; }
+  .btn-small{ padding:6px 11px; font-size:11.5px; border-radius:6px; border:1px solid var(--steel-line); background:transparent; cursor:pointer; }
+
+  .logo-preview{ width:80px; height:80px; border-radius:12px; border:1.5px dashed var(--steel-line); display:flex; align-items:center; justify-content:center; overflow:hidden; background:#FCFBF9; margin-bottom:10px; }
+  .logo-preview img{ width:100%; height:100%; object-fit:contain; }
+
+  .bank-row{ display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; margin-bottom:8px; align-items:center; }
+  .bank-row input{ padding:8px 9px; border:1px solid var(--steel-line); border-radius:6px; font-size:12.5px; font-family:'JetBrains Mono'; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--steel); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; padding:8px 8px; border-bottom:1px solid var(--steel-line); }
+  td{ padding:9px 8px; border-bottom:1px solid #F0EEE8; vertical-align:middle; }
+
+  .stamp{ display:inline-flex; align-items:center; gap:5px; font-family:'JetBrains Mono'; font-size:10px; font-weight:600; padding:3px 8px; border-radius:20px; border:1.5px solid currentColor; letter-spacing:.03em; text-transform:uppercase; }
+  .stamp.ok{ color:var(--moss); background:var(--moss-soft); }
+  .stamp.pending{ color:var(--amber); background:var(--amber-soft); }
+
+  .toast{ position:fixed; bottom:24px; right:24px; background:var(--ink); color:#fff; padding:12px 18px; border-radius:8px; font-size:13px; opacity:0; transform:translateY(10px); transition:.25s; pointer-events:none; z-index:100; }
+  .toast.show{ opacity:1; transform:translateY(0); }
+
+  .correlativo-preview{ font-family:'JetBrains Mono'; background:#FCFBF9; border:1px solid var(--steel-line); border-radius:8px; padding:14px; text-align:center; font-size:19px; font-weight:600; color:var(--red); }
+
+  /* ---------- Modales ---------- */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(30,33,38,.5); display:flex; align-items:center; justify-content:center; z-index:80; padding:16px; }
+  .modal-box{ background:var(--panel); border-radius:14px; width:100%; max-width:760px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--steel-line); }
+  .modal-head h3{ margin:0; font-size:16px; }
+  .close-fab-dark{ cursor:pointer; color:var(--steel); font-size:19px; }
+  .close-fab-dark:hover{ color:var(--red); }
+  .modal-body{ padding:18px 20px; overflow-y:auto; flex:1; }
+  .modal-foot{ padding:14px 20px; border-top:1px solid var(--steel-line); display:flex; justify-content:flex-end; gap:10px; }
+
+  .maquina-card{ border:1px solid var(--steel-line); border-radius:10px; padding:14px; margin-bottom:12px; background:#FCFBF9; position:relative; }
+  .maquina-card .field-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px; }
+  .maquina-card input, .maquina-card select, .maquina-card textarea{ padding:8px 9px; border:1px solid var(--steel-line); border-radius:6px; font-size:12.5px; font-family:'Inter'; width:100%; }
+  .maquina-card textarea{ resize:vertical; min-height:50px; }
+  .maquina-remove{ position:absolute; top:10px; right:10px; cursor:pointer; color:var(--steel); font-size:15px; }
+  .maquina-remove:hover{ color:var(--red); }
+  .detalles-extra{ font-size:11px; color:var(--steel); background:var(--amber-soft); border-radius:6px; padding:6px 9px; margin-top:6px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="auth-wrap" id="loginScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="gear">V&J</div>
+      <div>
+        <div class="auth-title">V&J CRM Power</div>
+        <div class="auth-sub">Ingresar</div>
+      </div>
+    </div>
+    <div id="loginMsg"></div>
+    <label class="field-label">Correo</label>
+    <input class="field" id="loginEmail" type="email" placeholder="tucorreo@vjelectroimport.com">
+    <label class="field-label">Contraseña</label>
+    <input class="field" id="loginPass" type="password" placeholder="••••••••">
+    <button class="btn btn-primary" onclick="doLogin()">Ingresar</button>
+    <div class="or-divider"><span>o</span></div>
+    <button class="btn btn-google" onclick="doGoogleLogin()">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.2 29.4 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.3 1 7.3 2.8l6-6C33.5 6.5 29 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.6-.2-3-.9-4.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c2.8 0 5.3 1 7.3 2.8l6-6C33.5 6.5 29 4.5 24 4.5c-7.7 0-14.3 4.4-17.7 10.2z"/><path fill="#4CAF50" d="M24 45.5c5.3 0 9.7-1.7 12.9-4.7l-6-4.9c-1.9 1.4-4.3 2.3-6.9 2.3-5.4 0-9.9-2.8-11.3-7.4l-6.5 5c3.4 6 10 10.7 17.8 10.7z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2.2-2 4-3.9 5.4l6 4.9C40.7 35.8 44.5 30.5 44.5 25c0-1.6-.2-3-.9-4.5z"/></svg>
+      Ingresar con Google
+    </button>
+    <div class="auth-switch">¿No tienes cuenta? <button class="btn-link" onclick="showScreen('register')">Regístrate</button></div>
+  </div>
+</div>
+
+<!-- ===================== REGISTRO ===================== -->
+<div class="auth-wrap hidden" id="registerScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="gear">V&J</div>
+      <div>
+        <div class="auth-title">Crear cuenta</div>
+        <div class="auth-sub">El primer usuario será Administrador</div>
+      </div>
+    </div>
+    <div id="registerMsg"></div>
+    <label class="field-label">Nombre</label>
+    <input class="field" id="regName" placeholder="Henry Caballero">
+    <label class="field-label">Correo</label>
+    <input class="field" id="regEmail" type="email" placeholder="tucorreo@vjelectroimport.com">
+    <label class="field-label">Contraseña</label>
+    <input class="field" id="regPass" type="password" placeholder="Mínimo 6 caracteres">
+    <button class="btn btn-primary" onclick="doRegister()">Crear cuenta</button>
+    <div class="or-divider"><span>o</span></div>
+    <button class="btn btn-google" onclick="doGoogleLogin()">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.2 29.4 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.3 1 7.3 2.8l6-6C33.5 6.5 29 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.6-.2-3-.9-4.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c2.8 0 5.3 1 7.3 2.8l6-6C33.5 6.5 29 4.5 24 4.5c-7.7 0-14.3 4.4-17.7 10.2z"/><path fill="#4CAF50" d="M24 45.5c5.3 0 9.7-1.7 12.9-4.7l-6-4.9c-1.9 1.4-4.3 2.3-6.9 2.3-5.4 0-9.9-2.8-11.3-7.4l-6.5 5c3.4 6 10 10.7 17.8 10.7z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2.2-2 4-3.9 5.4l6 4.9C40.7 35.8 44.5 30.5 44.5 25c0-1.6-.2-3-.9-4.5z"/></svg>
+      Registrarme con Google
+    </button>
+    <div class="auth-switch">¿Ya tienes cuenta? <button class="btn-link" onclick="showScreen('login')">Ingresar</button></div>
+  </div>
+</div>
+
+<!-- ===================== PENDIENTE DE APROBACIÓN ===================== -->
+<div class="auth-wrap hidden" id="pendingScreen">
+  <div class="auth-card" style="text-align:center;">
+    <div class="auth-logo" style="justify-content:center;">
+      <div class="gear">V&J</div>
+    </div>
+    <h3>Cuenta creada</h3>
+    <p style="font-size:13px; color:var(--ink-soft);">Tu cuenta está <b>pendiente de aprobación</b> por un administrador. Te avisaremos cuando puedas ingresar.</p>
+    <button class="btn-ghost" onclick="doLogout()">Volver al inicio</button>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div class="app" id="appShell">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="gear">V&J</div>
+      <div>
+        <div class="brand-name">V&J CRM Power</div>
+        <div class="brand-sub">Villa el Salvador</div>
+      </div>
+    </div>
+    <div class="nav-item active" data-view="config"><span class="nav-icon">⚙</span> <span>Configuración</span></div>
+    <div class="nav-item" data-view="clientes"><span class="nav-icon">◍</span> <span>Clientes & Máquinas</span></div>
+    <div class="nav-item disabled"><span class="nav-icon">▤</span> <span>Inventario</span><span class="soon-tag">Fase 3</span></div>
+    <div class="nav-item disabled"><span class="nav-icon">✎</span> <span>Cotizaciones</span><span class="soon-tag">Fase 4</span></div>
+    <div class="nav-item disabled"><span class="nav-icon">▧</span> <span>Informes Técnicos</span><span class="soon-tag">Fase 5</span></div>
+    <div class="nav-item disabled"><span class="nav-icon">▦</span> <span>Dashboard</span><span class="soon-tag">Fase 6</span></div>
+    <div class="sidebar-foot">Hecho por JhonyBot<br>V1.0 · Todos los derechos reservados</div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Configuración</div>
+      <div class="user-chip">
+        <span class="role-badge" id="topRoleBadge">ADMIN</span>
+        <div class="avatar" id="topAvatar">H</div>
+        <span class="logout-link" onclick="doLogout()">Salir</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="view active" id="view-config">
+        <div class="view-head">
+          <div><h2>Configuración</h2><div class="view-sub">Estos datos aparecerán en todas tus cotizaciones e informes</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-title">Datos de la empresa</div>
+            <label class="field-label">Razón social</label>
+            <input class="field" id="cfgRazonSocial" placeholder="V & J ELECTRONICS IMPORT">
+            <label class="field-label">RUC</label>
+            <input class="field mono" id="cfgRuc" placeholder="20608185349">
+            <label class="field-label">Dirección</label>
+            <input class="field" id="cfgDireccion" placeholder="Av. Separadora Industrial Mz. H1 Lt. 28...">
+            <label class="field-label">Frase / eslogan (aparece en el PDF)</label>
+            <input class="field" id="cfgTagline" placeholder="Calidad, garantía y rapidez en tus productos importados">
+            <label class="field-label">Teléfono / WhatsApp</label>
+            <input class="field" id="cfgTelefono" placeholder="+51 9XX XXX XXX">
+            <label class="field-label">Sitio web</label>
+            <input class="field" id="cfgWeb" placeholder="www.vjelectroimport.com">
+          </div>
+
+          <div>
+            <div class="panel">
+              <div class="panel-title">Logo</div>
+              <div class="logo-preview" id="logoPreview">🖼️</div>
+              <input type="file" id="logoInput" accept="image/*" onchange="previewLogo(event)">
+              <div style="font-size:11px;color:var(--steel);margin-top:6px;">Se sube a Firebase Storage — sin límite práctico de peso</div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-title">Numeración de cotizaciones</div>
+              <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div style="flex:1;">
+                  <label class="field-label">Prefijo</label>
+                  <input class="field mono" id="cfgPrefijo" value="S" style="margin-bottom:0;">
+                </div>
+                <div style="flex:2;">
+                  <label class="field-label">Próximo número correlativo</label>
+                  <input class="field mono" id="cfgCorrelativo" type="number" value="213" style="margin-bottom:0;">
+                </div>
+              </div>
+              <div class="field-label" style="margin-top:8px;">Se verá así en tu próxima cotización</div>
+              <div class="correlativo-preview" id="correlativoPreview">S00213</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            Cuentas bancarias (aparecen al pie de la cotización)
+            <button class="btn-small" onclick="addBankRow()">+ Agregar cuenta</button>
+          </div>
+          <div id="bankRows"></div>
+        </div>
+
+        <div class="panel" id="usersPanel">
+          <div class="panel-title">Usuarios con acceso</div>
+          <table>
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="5" style="color:var(--steel);">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button class="btn-save" onclick="saveConfig()">Guardar configuración</button>
+        </div>
+      </div>
+
+      <!-- ===================== CLIENTES & MÁQUINAS ===================== -->
+      <div class="view" id="view-clientes">
+        <div class="view-head">
+          <div><h2>Clientes &amp; Máquinas</h2><div class="view-sub">Base de clientes con sus equipos asociados</div></div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-ghost hidden" id="btnMigrar" onclick="abrirMigracion()">Migrar datos antiguos</button>
+            <button class="btn-save" onclick="abrirClienteModal()">+ Nuevo cliente</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input class="field" style="margin-bottom:14px;" id="buscarCliente" placeholder="Buscar cliente por nombre o RUC..." oninput="renderClientes()">
+          <table>
+            <thead><tr><th>Cliente</th><th>RUC</th><th>Contacto</th><th>Máquinas</th><th></th></tr></thead>
+            <tbody id="clientesTableBody">
+              <tr><td colspan="5" style="color:var(--steel);">Cargando clientes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL CLIENTE ===================== -->
+<div class="modal-overlay hidden" id="clienteModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="clienteModalTitle">Nuevo cliente</h3>
+      <span class="close-fab-dark" onclick="cerrarClienteModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div>
+          <label class="field-label">Nombre / Razón social</label>
+          <input class="field" id="cliNombre" placeholder="SIGEMET ELECTRIC S.A.C.">
+          <label class="field-label">RUC</label>
+          <input class="field mono" id="cliRuc" placeholder="20609607549">
+          <label class="field-label">Dirección</label>
+          <input class="field" id="cliDireccion" placeholder="Av. / Calle, distrito, Lima">
+        </div>
+        <div>
+          <label class="field-label">Contacto (persona)</label>
+          <input class="field" id="cliContacto" placeholder="Nombre de quien coordina">
+          <label class="field-label">Teléfono / WhatsApp</label>
+          <input class="field" id="cliTelefono" placeholder="+51 9XX XXX XXX">
+          <label class="field-label">Correo</label>
+          <input class="field" id="cliEmail" placeholder="contacto@cliente.com">
+        </div>
+      </div>
+
+      <div class="panel-title" style="margin-top:8px;">
+        Máquinas del cliente
+        <button class="btn-small" onclick="addMaquinaRow()">+ Agregar máquina</button>
+      </div>
+      <div id="maquinasList"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="cerrarClienteModal()">Cancelar</button>
+      <button class="btn-save" onclick="guardarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL MIGRACIÓN ===================== -->
+<div class="modal-overlay hidden" id="migracionModal">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-head">
+      <h3>Migrar datos antiguos</h3>
+      <span class="close-fab-dark" onclick="cerrarMigracion()">✕</span>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ink-soft);">Ingresa tus credenciales de cada sistema anterior (las que ya usas a diario). Es un paso único — solo se usa para leer y copiar la información hacia V&J CRM Power.</p>
+
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="panel-title">CRM técnico (clientes &amp; máquinas)</div>
+        <label class="field-label">Correo</label>
+        <input class="field" id="migCrmEmail" placeholder="tucorreo@vjelectroimport.com">
+        <label class="field-label">Contraseña</label>
+        <input class="field" id="migCrmPass" type="password">
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">KardexBot (productos)</div>
+        <label class="field-label">Correo</label>
+        <input class="field" id="migKardexEmail" placeholder="tucorreo@vjelectroimport.com">
+        <label class="field-label">Contraseña</label>
+        <input class="field" id="migKardexPass" type="password">
+      </div>
+
+      <div id="migLog" style="font-family:'JetBrains Mono'; font-size:11.5px; color:var(--ink-soft); max-height:160px; overflow-y:auto; margin-top:12px; background:#FCFBF9; border:1px solid var(--steel-line); border-radius:8px; padding:10px; display:none;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="cerrarMigracion()">Cancelar</button>
+      <button class="btn-save" id="btnIniciarMigracion" onclick="iniciarMigracion()">Iniciar migración</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   1) CONFIGURA TU PROYECTO FIREBASE AQUÍ
+   (los mismos valores que usaste en el CRM técnico / KardexBot,
+   o un proyecto nuevo dedicado a V&J CRM Power — tu decides)
+============================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCOzJHK84QpO3eGOsHqLvhhXkclOdFMb2M",
+  authDomain: "vj-crm-power.firebaseapp.com",
+  projectId: "vj-crm-power",
+  storageBucket: "vj-crm-power.firebasestorage.app",
+  messagingSenderId: "728736911855",
+  appId: "1:728736911855:web:a23e9afd348a81854e661a"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let currentUser = null;
+let currentUserData = null;
+let logoFile = null;
+let bankRowCount = 0;
+let usuariosUnsub = null;
+
+/* ---------------- Navegación entre pantallas de auth ---------------- */
+function showScreen(name){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('registerScreen').classList.add('hidden');
+  document.getElementById('pendingScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.remove('active');
+  if(name==='login') document.getElementById('loginScreen').classList.remove('hidden');
+  if(name==='register') document.getElementById('registerScreen').classList.remove('hidden');
+  if(name==='pending') document.getElementById('pendingScreen').classList.remove('hidden');
+}
+
+function setMsg(elId, text, type){
+  document.getElementById(elId).innerHTML = text ? `<div class="msg ${type}">${text}</div>` : '';
+}
+
+async function existeUnAdmin(){
+  const snap = await db.collection('usuarios').where('rol','==','admin').limit(1).get();
+  return !snap.empty;
+}
+async function doRegister(){
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  setMsg('registerMsg','','');
+  if(!name || !email || !pass){ setMsg('registerMsg','Completa todos los campos.','error'); return; }
+  if(pass.length < 6){ setMsg('registerMsg','La contraseña debe tener al menos 6 caracteres.','error'); return; }
+
+  try{
+    // 1) Primero autenticamos: recién con sesión activa, las reglas de
+    //    seguridad nos dejan leer/escribir en Firestore.
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.getIdToken(true); // aseguramos que el token esté listo antes de usar Firestore
+
+    // 2) Ahora sí, revisamos si ya existe un Administrador real.
+    const esPrimero = !(await existeUnAdmin());
+
+    await db.collection('usuarios').doc(cred.user.uid).set({
+      nombre: name,
+      correo: email,
+      rol: esPrimero ? 'admin' : 'usuario',
+      estado: esPrimero ? 'aprobado' : 'pendiente',
+      creado: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if(esPrimero){
+      setMsg('registerMsg','Cuenta creada como Administrador.','success');
+    } else {
+      await auth.signOut();
+      showScreen('pending');
+    }
+  }catch(err){
+    setMsg('registerMsg', traducirError(err.code), 'error');
+  }
+}
+
+/* ---------------- Login ---------------- */
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  setMsg('loginMsg','','');
+  if(!email || !pass){ setMsg('loginMsg','Ingresa correo y contraseña.','error'); return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(err){
+    setMsg('loginMsg', traducirError(err.code), 'error');
+  }
+}
+
+/* ---------------- Login / Registro con Google ---------------- */
+async function doGoogleLogin(){
+  setMsg('loginMsg','','');
+  setMsg('registerMsg','','');
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const result = await auth.signInWithPopup(provider);
+    const user = result.user;
+
+    const docRef = db.collection('usuarios').doc(user.uid);
+    const docSnap = await docRef.get();
+
+    if(!docSnap.exists){
+      // Primera vez que este usuario entra: se crea su registro
+      const esPrimero = !(await existeUnAdmin());
+      await docRef.set({
+        nombre: user.displayName || user.email,
+        correo: user.email,
+        rol: esPrimero ? 'admin' : 'usuario',
+        estado: esPrimero ? 'aprobado' : 'pendiente',
+        metodo: 'google',
+        creado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      if(!esPrimero){
+        await auth.signOut();
+        showScreen('pending');
+      }
+    }
+    // Si ya existía el doc, onAuthStateChanged se encarga de revisar
+    // su estado (aprobado/pendiente) y llevarlo a la pantalla correcta.
+  }catch(err){
+    console.error(err);
+    const msg = err.code === 'auth/popup-closed-by-user' ? '' : 'No se pudo ingresar con Google. Intenta nuevamente.';
+    if(msg){ setMsg('loginMsg', msg, 'error'); }
+  }
+}
+
+function doLogout(){
+  if(usuariosUnsub){ usuariosUnsub(); usuariosUnsub = null; }
+  auth.signOut();
+  currentUser = null;
+  currentUserData = null;
+  showScreen('login');
+}
+
+function traducirError(code){
+  const map = {
+    'auth/user-not-found':'No existe una cuenta con ese correo. Prueba "Regístrate".',
+    'auth/wrong-password':'Contraseña incorrecta.',
+    'auth/invalid-credential':'Correo o contraseña incorrectos, o la cuenta aún no existe. Si es tu primera vez, usa "Regístrate".',
+    'auth/email-already-in-use':'Ese correo ya está registrado. Prueba ingresar en vez de registrarte.',
+    'auth/invalid-email':'Correo inválido.',
+    'auth/weak-password':'La contraseña es muy débil.',
+    'auth/too-many-requests':'Demasiados intentos. Espera un momento y vuelve a intentar.',
+    'auth/network-request-failed':'Problema de conexión a internet. Revisa tu red.'
+  };
+  return map[code] || ('Ocurrió un error (' + code + '). Intenta nuevamente.');
+}
+
+/* ---------------- Control de sesión ---------------- */
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    const docRef = db.collection('usuarios').doc(user.uid);
+    let doc = await docRef.get();
+
+    if(!doc.exists){
+      // El usuario existe en Authentication pero no tiene perfil guardado
+      // (por ejemplo, si falló antes por reglas de seguridad). Lo creamos ahora.
+      try{
+        const esPrimero = !(await existeUnAdmin());
+        await docRef.set({
+          nombre: user.displayName || user.email,
+          correo: user.email,
+          rol: esPrimero ? 'admin' : 'usuario',
+          estado: esPrimero ? 'aprobado' : 'pendiente',
+          creado: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        doc = await docRef.get();
+      }catch(err){
+        console.error('No se pudo crear el perfil de usuario:', err);
+        showScreen('login');
+        return;
+      }
+    }
+
+    const data = doc.data();
+    if(data.estado === 'pendiente'){
+      showScreen('pending');
+      return;
+    }
+    currentUser = user;
+    currentUserData = data;
+    entrarAlSistema();
+  } else {
+    showScreen('login');
+  }
+});
+
+function entrarAlSistema(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('registerScreen').classList.add('hidden');
+  document.getElementById('pendingScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.add('active');
+  document.getElementById('topAvatar').textContent = currentUserData.nombre.charAt(0).toUpperCase();
+  document.getElementById('topRoleBadge').textContent = currentUserData.rol.toUpperCase();
+  if(currentUserData.rol !== 'admin'){
+    document.getElementById('usersPanel').classList.add('hidden');
+  } else {
+    document.getElementById('btnMigrar').classList.remove('hidden');
+  }
+  cargarConfig();
+  cargarUsuarios();
+  cargarClientes();
+}
+
+/* ---------------- Navegación entre vistas del panel principal ---------------- */
+const NAV_TITLES = {config:'Configuración', clientes:'Clientes & Máquinas', inventario:'Inventario', cotizaciones:'Cotizaciones', informes:'Informes Técnicos', dashboard:'Dashboard'};
+document.querySelectorAll('.nav-item[data-view]').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    const name = item.dataset.view;
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active', i===item));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const target = document.getElementById('view-'+name);
+    if(target) target.classList.add('active');
+    document.getElementById('topbarTitle').textContent = NAV_TITLES[name] || '';
+  });
+});
+
+/* ---------------- Cuentas bancarias (filas dinámicas) ---------------- */
+function addBankRow(banco='', tipo='Soles', numero='', cci=''){
+  bankRowCount++;
+  const id = 'bank_'+bankRowCount;
+  const wrap = document.createElement('div');
+  wrap.className = 'bank-row';
+  wrap.id = id;
+  wrap.innerHTML = `
+    <input placeholder="Banco (ej. BCP)" value="${banco}" data-f="banco">
+    <select data-f="tipo" style="padding:8px;border:1px solid var(--steel-line);border-radius:6px;font-size:12.5px;">
+      <option ${tipo==='Soles'?'selected':''}>Soles</option>
+      <option ${tipo==='Dólares'?'selected':''}>Dólares</option>
+      <option ${tipo==='Detracciones'?'selected':''}>Detracciones</option>
+    </select>
+    <input placeholder="N° cuenta / CCI" value="${numero}" data-f="numero">
+    <button class="btn-small" onclick="document.getElementById('${id}').remove()">✕</button>
+  `;
+  document.getElementById('bankRows').appendChild(wrap);
+}
+
+/* ---------------- Logo ---------------- */
+function previewLogo(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  logoFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('logoPreview').innerHTML = `<img src="${ev.target.result}">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ---------------- Preview correlativo en vivo ---------------- */
+function actualizarPreviewCorrelativo(){
+  const prefijo = document.getElementById('cfgPrefijo').value || 'S';
+  const num = parseInt(document.getElementById('cfgCorrelativo').value || '0', 10);
+  document.getElementById('correlativoPreview').textContent = prefijo + String(num).padStart(5,'0');
+}
+document.getElementById('cfgPrefijo').addEventListener('input', actualizarPreviewCorrelativo);
+document.getElementById('cfgCorrelativo').addEventListener('input', actualizarPreviewCorrelativo);
+
+/* ---------------- Guardar / Cargar configuración ---------------- */
+async function saveConfig(){
+  try{
+    let logoUrl = null;
+    if(logoFile){
+      const ref = storage.ref('config/logo_' + Date.now() + '_' + logoFile.name);
+      await ref.put(logoFile);
+      logoUrl = await ref.getDownloadURL();
+    }
+
+    const bancos = [];
+    document.querySelectorAll('#bankRows .bank-row').forEach(row=>{
+      bancos.push({
+        banco: row.querySelector('[data-f="banco"]').value,
+        tipo: row.querySelector('[data-f="tipo"]').value,
+        numero: row.querySelector('[data-f="numero"]').value
+      });
+    });
+
+    const configData = {
+      razonSocial: document.getElementById('cfgRazonSocial').value,
+      ruc: document.getElementById('cfgRuc').value,
+      direccion: document.getElementById('cfgDireccion').value,
+      tagline: document.getElementById('cfgTagline').value,
+      telefono: document.getElementById('cfgTelefono').value,
+      web: document.getElementById('cfgWeb').value,
+      prefijoCotizacion: document.getElementById('cfgPrefijo').value,
+      correlativoCotizacion: parseInt(document.getElementById('cfgCorrelativo').value || '0', 10),
+      cuentasBancarias: bancos,
+      actualizado: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(logoUrl) configData.logoUrl = logoUrl;
+
+    await db.collection('config').doc('empresa').set(configData, { merge: true });
+    mostrarToast('Configuración guardada correctamente ✓');
+  }catch(err){
+    console.error(err);
+    mostrarToast('Error al guardar. Revisa la consola.');
+  }
+}
+
+async function cargarConfig(){
+  const doc = await db.collection('config').doc('empresa').get();
+  if(doc.exists){
+    const d = doc.data();
+    document.getElementById('cfgRazonSocial').value = d.razonSocial || '';
+    document.getElementById('cfgRuc').value = d.ruc || '';
+    document.getElementById('cfgDireccion').value = d.direccion || '';
+    document.getElementById('cfgTagline').value = d.tagline || '';
+    document.getElementById('cfgTelefono').value = d.telefono || '';
+    document.getElementById('cfgWeb').value = d.web || '';
+    document.getElementById('cfgPrefijo').value = d.prefijoCotizacion || 'S';
+    document.getElementById('cfgCorrelativo').value = d.correlativoCotizacion || 1;
+    if(d.logoUrl){ document.getElementById('logoPreview').innerHTML = `<img src="${d.logoUrl}">`; }
+    document.getElementById('bankRows').innerHTML = '';
+    (d.cuentasBancarias || []).forEach(b => addBankRow(b.banco, b.tipo, b.numero));
+    if((d.cuentasBancarias||[]).length === 0) addBankRow();
+    actualizarPreviewCorrelativo();
+  } else {
+    addBankRow();
+    actualizarPreviewCorrelativo();
+  }
+}
+
+/* ---------------- Gestión de usuarios (solo admin) ---------------- */
+function cargarUsuarios(){
+  if(usuariosUnsub){ usuariosUnsub(); }
+  usuariosUnsub = db.collection('usuarios').onSnapshot(snap=>{
+    const body = document.getElementById('usersTableBody');
+    body.innerHTML = '';
+    snap.forEach(doc=>{
+      const u = doc.data();
+      const esYo = doc.id === (currentUser ? currentUser.uid : '');
+      const stamp = u.estado === 'aprobado'
+        ? '<span class="stamp ok">Aprobado</span>'
+        : '<span class="stamp pending">Pendiente</span>';
+      let acciones = '';
+      if(currentUserData && currentUserData.rol === 'admin' && !esYo){
+        if(u.estado === 'pendiente'){
+          acciones += `<button class="btn-small" onclick="aprobarUsuario('${doc.id}')">Aprobar</button> `;
+        }
+        const nuevoRol = u.rol === 'admin' ? 'usuario' : 'admin';
+        acciones += `<button class="btn-small" onclick="cambiarRol('${doc.id}','${nuevoRol}')">Hacer ${nuevoRol}</button> `;
+        acciones += `<button class="btn-small" style="color:var(--red);border-color:var(--red-soft);" onclick="eliminarUsuario('${doc.id}','${u.nombre.replace(/'/g,"")}')">Quitar acceso</button>`;
+      }
+      body.innerHTML += `<tr>
+        <td>${u.nombre}</td>
+        <td class="mono" style="font-size:11.5px;">${u.correo}</td>
+        <td><span class="role-badge" style="background:${u.rol==='admin'?'var(--ink)':'var(--steel)'};">${u.rol.toUpperCase()}</span></td>
+        <td>${stamp}</td>
+        <td>${acciones}</td>
+      </tr>`;
+    });
+  });
+}
+
+async function aprobarUsuario(uid){
+  await db.collection('usuarios').doc(uid).update({ estado: 'aprobado' });
+  mostrarToast('Usuario aprobado ✓');
+}
+async function cambiarRol(uid, nuevoRol){
+  await db.collection('usuarios').doc(uid).update({ rol: nuevoRol });
+  mostrarToast('Rol actualizado ✓');
+}
+async function eliminarUsuario(uid, nombre){
+  const ok = confirm(`¿Quitar el acceso de ${nombre}? Ya no podrá entrar al sistema. (Si vuelve a intentar ingresar, quedará como cuenta pendiente de aprobación otra vez).`);
+  if(!ok) return;
+  await db.collection('usuarios').doc(uid).delete();
+  mostrarToast('Acceso eliminado ✓');
+}
+
+/* ---------------- Toast ---------------- */
+function mostrarToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2800);
+}
+
+/* ============================================================
+   CLIENTES & MÁQUINAS
+============================================================= */
+let clientesCache = [];
+let maquinaRowCount = 0;
+let clienteEditandoId = null;
+
+function cargarClientes(){
+  db.collection('clientes').orderBy('nombre').onSnapshot(snap=>{
+    clientesCache = [];
+    snap.forEach(doc => clientesCache.push({ id: doc.id, ...doc.data() }));
+    // Mostrar botón de migración solo si somos admin y todavía no hay clientes
+    if(currentUserData && currentUserData.rol === 'admin' && clientesCache.length === 0){
+      document.getElementById('btnMigrar').classList.remove('hidden');
+    }
+    renderClientes();
+  }, err=>{
+    console.error(err);
+  });
+}
+
+function renderClientes(){
+  const filtro = (document.getElementById('buscarCliente').value || '').toLowerCase();
+  const body = document.getElementById('clientesTableBody');
+  const filtrados = clientesCache.filter(c =>
+    (c.nombre||'').toLowerCase().includes(filtro) || (c.ruc||'').includes(filtro)
+  );
+  if(filtrados.length === 0){
+    body.innerHTML = `<tr><td colspan="5" style="color:var(--steel);">No hay clientes registrados todavía.</td></tr>`;
+    return;
+  }
+  body.innerHTML = filtrados.map(c => `
+    <tr>
+      <td><b>${c.nombre||'(Sin nombre)'}</b>${c.migradoDe ? ` <span class="stamp ok" style="margin-left:4px;">migrado</span>` : ''}</td>
+      <td class="mono" style="font-size:11.5px;">${c.ruc||'—'}</td>
+      <td style="font-size:12.5px;">${c.contacto||'—'}<br><span style="color:var(--steel);font-size:11px;">${c.telefono||''}</span></td>
+      <td>${(c.maquinas||[]).length} máquina(s)</td>
+      <td><button class="btn-small" onclick="abrirClienteModal('${c.id}')">Ver / Editar</button></td>
+    </tr>
+  `).join('');
+}
+
+function abrirClienteModal(id){
+  clienteEditandoId = id || null;
+  document.getElementById('maquinasList').innerHTML = '';
+  maquinaRowCount = 0;
+
+  if(id){
+    const c = clientesCache.find(x => x.id === id);
+    document.getElementById('clienteModalTitle').textContent = 'Editar cliente';
+    document.getElementById('cliNombre').value = c.nombre || '';
+    document.getElementById('cliRuc').value = c.ruc || '';
+    document.getElementById('cliDireccion').value = c.direccion || '';
+    document.getElementById('cliContacto').value = c.contacto || '';
+    document.getElementById('cliTelefono').value = c.telefono || '';
+    document.getElementById('cliEmail').value = c.email || '';
+    (c.maquinas || []).forEach(m => addMaquinaRow(m));
+  } else {
+    document.getElementById('clienteModalTitle').textContent = 'Nuevo cliente';
+    ['cliNombre','cliRuc','cliDireccion','cliContacto','cliTelefono','cliEmail'].forEach(id=>document.getElementById(id).value='');
+    addMaquinaRow();
+  }
+  document.getElementById('clienteModal').classList.remove('hidden');
+}
+function cerrarClienteModal(){
+  document.getElementById('clienteModal').classList.add('hidden');
+}
+
+function addMaquinaRow(datos){
+  datos = datos || {};
+  maquinaRowCount++;
+  const rowId = 'maq_' + maquinaRowCount;
+  const tipos = ['Láser Fibra','Láser CO₂','Plasma CNC','Router CNC','Marcado Láser','Otro'];
+  const tipoActual = datos.tipo || tipos[0];
+
+  // Cualquier campo del dato original que no sea uno de los campos "conocidos"
+  // se guarda como detalle extra, para no perder información al migrar.
+  const camposConocidos = ['tipo','marca','modelo','anio','notas'];
+  const extras = Object.keys(datos).filter(k => !camposConocidos.includes(k));
+  const extrasHtml = extras.length
+    ? `<div class="detalles-extra">Detalles originales: ${extras.map(k=>`${k}: ${JSON.stringify(datos[k])}`).join(' · ')}</div>`
+    : '';
+
+  const div = document.createElement('div');
+  div.className = 'maquina-card';
+  div.id = rowId;
+  div.dataset.extras = JSON.stringify(extras.reduce((o,k)=>{o[k]=datos[k];return o;},{}));
+  div.innerHTML = `
+    <span class="maquina-remove" onclick="document.getElementById('${rowId}').remove()">✕</span>
+    <div class="field-row">
+      <select data-f="tipo">${tipos.map(t=>`<option ${t===tipoActual?'selected':''}>${t}</option>`).join('')}</select>
+      <input placeholder="Marca (ej. Raytools)" value="${datos.marca||''}" data-f="marca">
+      <input placeholder="Modelo" value="${datos.modelo||''}" data-f="modelo">
+    </div>
+    <div class="field-row" style="grid-template-columns:1fr 3fr;">
+      <input placeholder="Año" value="${datos.anio||''}" data-f="anio">
+      <input placeholder="Área / dimensiones de trabajo" value="${datos.area||''}" data-f="area">
+    </div>
+    <textarea placeholder="Notas técnicas (lentes, boquillas, config., etc.)" data-f="notas">${datos.notas||''}</textarea>
+    ${extrasHtml}
+  `;
+  document.getElementById('maquinasList').appendChild(div);
+}
+
+function guardarCliente(){
+  const nombre = document.getElementById('cliNombre').value.trim();
+  if(!nombre){ alert('Ingresa el nombre del cliente.'); return; }
+
+  const maquinas = [];
+  document.querySelectorAll('#maquinasList .maquina-card').forEach(card=>{
+    const m = {
+      tipo: card.querySelector('[data-f="tipo"]').value,
+      marca: card.querySelector('[data-f="marca"]').value,
+      modelo: card.querySelector('[data-f="modelo"]').value,
+      anio: card.querySelector('[data-f="anio"]').value,
+      area: card.querySelector('[data-f="area"]').value,
+      notas: card.querySelector('[data-f="notas"]').value
+    };
+    // Reintegramos cualquier detalle extra que traía originalmente (ej. de migración)
+    try{
+      const extras = JSON.parse(card.dataset.extras || '{}');
+      Object.assign(m, extras);
+    }catch(e){}
+    maquinas.push(m);
+  });
+
+  const data = {
+    nombre,
+    ruc: document.getElementById('cliRuc').value.trim(),
+    direccion: document.getElementById('cliDireccion').value.trim(),
+    contacto: document.getElementById('cliContacto').value.trim(),
+    telefono: document.getElementById('cliTelefono').value.trim(),
+    email: document.getElementById('cliEmail').value.trim(),
+    maquinas,
+    actualizado: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  const promesa = clienteEditandoId
+    ? db.collection('clientes').doc(clienteEditandoId).update(data)
+    : db.collection('clientes').doc().set({...data, creado: firebase.firestore.FieldValue.serverTimestamp()});
+
+  promesa.then(()=>{
+    mostrarToast('Cliente guardado ✓');
+    cerrarClienteModal();
+  }).catch(err=>{
+    console.error(err);
+    mostrarToast('Error al guardar el cliente.');
+  });
+}
+
+/* ============================================================
+   MIGRACIÓN DESDE CRM TÉCNICO Y KARDEXBOT
+============================================================= */
+const CONFIG_CRM_TECNICO = {
+  apiKey: "AIzaSyB06TWlea941bpHxv9CX6MY4AuKLCjAEsU",
+  authDomain: "vj-electronics-import-crm.firebaseapp.com",
+  projectId: "vj-electronics-import-crm",
+  storageBucket: "vj-electronics-import-crm.firebasestorage.app",
+  messagingSenderId: "563080802592",
+  appId: "1:563080802592:web:48bff205ac1f7de66d6745"
+};
+const CONFIG_KARDEXBOT = {
+  apiKey: "AIzaSyBz3mV6MavmQ_wPGaeHd5eb105B2vGF6GI",
+  authDomain: "kardexbot-inventario.firebaseapp.com",
+  projectId: "kardexbot-inventario",
+  storageBucket: "kardexbot-inventario.firebasestorage.app",
+  messagingSenderId: "237943924509",
+  appId: "1:237943924509:web:7407625f56bf1a0f4763f4"
+};
+
+function abrirMigracion(){ document.getElementById('migracionModal').classList.remove('hidden'); }
+function cerrarMigracion(){ document.getElementById('migracionModal').classList.add('hidden'); }
+
+function logMigracion(msg){
+  const el = document.getElementById('migLog');
+  el.style.display = 'block';
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function iniciarMigracion(){
+  const crmEmail = document.getElementById('migCrmEmail').value.trim();
+  const crmPass = document.getElementById('migCrmPass').value;
+  const kxEmail = document.getElementById('migKardexEmail').value.trim();
+  const kxPass = document.getElementById('migKardexPass').value;
+
+  if(!crmEmail || !crmPass || !kxEmail || !kxPass){
+    alert('Completa las credenciales de ambos sistemas.');
+    return;
+  }
+
+  const btn = document.getElementById('btnIniciarMigracion');
+  btn.disabled = true;
+  btn.textContent = 'Migrando...';
+  document.getElementById('migLog').innerHTML = '';
+
+  try{
+    // --- 1) Clientes & máquinas desde CRM técnico ---
+    logMigracion('Conectando con CRM técnico...');
+    const appCrm = firebase.initializeApp(CONFIG_CRM_TECNICO, 'crmTecnico');
+    await appCrm.auth().signInWithEmailAndPassword(crmEmail, crmPass);
+    const dbCrm = appCrm.firestore();
+    const clientsSnap = await dbCrm.collection('clients').get();
+    logMigracion(`Encontrados ${clientsSnap.size} clientes.`);
+
+    let clientesNuevos = 0, clientesOmitidos = 0;
+    for(const doc of clientsSnap.docs){
+      const yaExiste = await db.collection('clientes').where('idOriginal','==',doc.id).limit(1).get();
+      if(!yaExiste.empty){ clientesOmitidos++; continue; }
+      const d = doc.data();
+      await db.collection('clientes').doc().set({
+        nombre: d.contacto || d.nombre || '(Sin nombre)',
+        contacto: d.contacto || '',
+        direccion: d.dir || d.direccion || '',
+        email: d.email || '',
+        telefono: d.telefono || '',
+        ruc: d.ruc || '',
+        maquinas: d.maquinas || [],
+        idOriginal: doc.id,
+        migradoDe: 'crm-tecnico',
+        creado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      clientesNuevos++;
+    }
+    logMigracion(`✔ ${clientesNuevos} clientes nuevos migrados (${clientesOmitidos} ya existían).`);
+    await appCrm.auth().signOut();
+    await appCrm.delete();
+
+    // --- 2) Productos desde KardexBot ---
+    logMigracion('Conectando con KardexBot...');
+    const appKx = firebase.initializeApp(CONFIG_KARDEXBOT, 'kardexBot');
+    await appKx.auth().signInWithEmailAndPassword(kxEmail, kxPass);
+    const dbKx = appKx.firestore();
+    const productsSnap = await dbKx.collection('products').get();
+    logMigracion(`Encontrados ${productsSnap.size} productos.`);
+
+    let prodNuevos = 0, prodOmitidos = 0;
+    for(const doc of productsSnap.docs){
+      const yaExiste = await db.collection('productos').where('idOriginal','==',doc.id).limit(1).get();
+      if(!yaExiste.empty){ prodOmitidos++; continue; }
+      const d = doc.data();
+      await db.collection('productos').doc().set({
+        ...d,
+        idOriginal: doc.id,
+        migradoDe: 'kardexbot',
+        creado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      prodNuevos++;
+    }
+    logMigracion(`✔ ${prodNuevos} productos nuevos migrados (${prodOmitidos} ya existían).`);
+    await appKx.auth().signOut();
+    await appKx.delete();
+
+    logMigracion('<b>Migración completa 🎉</b>');
+    mostrarToast('Migración completada ✓');
+  }catch(err){
+    console.error(err);
+    logMigracion('❌ Error: ' + (err.code || err.message));
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Iniciar migración';
+  }
+}
+</script>
+</body>
+</html>
